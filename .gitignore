@@ -1,0 +1,57 @@
+# Python cache and virtual environments
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv/
+env/
+venv/
+.Python
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Model files and large binaries
+models/
+*.h5
+*.pkl
+*.joblib
+*.sav
+
+# Log and report files
+*.log
+*.tmp
+*.out
+
+# Environment and credentials
+*.env
+config/
+*.txt
+*.json
+*.yaml
+*.yml
+
+# Data files (raw/historical/processed)
+data/
+reports/
+# Except maybe a README in data/
+!data/README.md
+
+# Output and artifacts
+*.csv
+*.xlsx
+*.pdf
+outputs/
+artifacts/
+
+# Streams and temporary backup
+*.bak
+*.swp
+*~
