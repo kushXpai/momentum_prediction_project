@@ -58,13 +58,17 @@ try:
     
     # ---- STEP 7: Save access token (optional) ----
     # Save token to file for later use (so you don't have to login again)
-    with open('../config/access_token.txt', 'w') as f:
+    config_folder = os.path.join(os.path.dirname(__file__), '../config')
+    os.makedirs(config_folder, exist_ok=True)  # Create folder if it doesn't exist
+    token_file = os.path.join(config_folder, 'access_token.txt')
+
+    with open(token_file, 'w') as f:
         f.write(access_token)
-    
+
     print("\n" + "="*50)
     print("✓ SESSION CREATED SUCCESSFULLY!")
     print("="*50)
-    print(f"Access Token saved to: ../config/access_token.txt")
+    print(f"Access Token saved to: {token_file}")
     print(f"Token: {access_token[:20]}...")  # Show first 20 chars
     
     # ---- STEP 8: Test the connection ----

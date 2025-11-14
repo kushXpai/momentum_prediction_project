@@ -55,3 +55,6 @@ artifacts/
 *.bak
 *.swp
 *~
+
+# README and documentation
+README/

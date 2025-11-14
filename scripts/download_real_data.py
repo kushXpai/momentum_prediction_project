@@ -84,9 +84,9 @@ try:
     # ---- STEP 4: Define date range ----
     print("\n[4/7] Setting date range...")
     
-    # Get last 100 trading days
+    # Get last 1239 trading days
     end_date = datetime.now()
-    start_date = end_date - timedelta(days=150)  # Extra buffer for weekends
+    start_date = end_date - timedelta(days=1826)  # Extra buffer for weekends
     
     print(f"Start date: {start_date.date()}")
     print(f"End date: {end_date.date()}")

@@ -52,9 +52,9 @@ try:
         exit()
     
     # ---- STEP 5: Set date range ----
-    # Download 1 month of data (from 30 days ago to today)
+    # Download 5 year of data (from 1826 days ago to today)
     end_date = datetime.now()
-    start_date = end_date - timedelta(days=30)
+    start_date = end_date - timedelta(days=1826)
     
     print(f"\nDownloading data from {start_date.date()} to {end_date.date()}")
     
@@ -98,7 +98,7 @@ try:
     
     # ---- STEP 10: Save to CSV file ----
     # Save the data locally so we don't need to download again
-    filename = '../data/RELIANCE_1month.csv'
+    filename = '../data/RELIANCE_5year.csv'
     df.to_csv(filename, index=False)
     print(f"\n✓ Data saved to: {filename}")
     
