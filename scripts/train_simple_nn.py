@@ -6,188 +6,162 @@
 
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import tensorflow as tf
-from tensorflow import keras
 from keras import layers
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+import pickle
 
 print("="*70)
-print("TRAINING SIMPLE NEURAL NETWORK")
+print("TRAINING SIMPLE NEURAL NETWORK FOR MOMENTUM PREDICTION")
 print("="*70)
 
 try:
-    # ---- STEP 1: Load training data ----
-    print("\n[1/8] Loading data...")
+    # ---- STEP 1: Load data ----
+    print("\n[1/7] Loading labeled data...")
     
-    train_df = pd.read_csv('../data/train_data_scaled.csv')
-    test_df = pd.read_csv('../data/test_data_scaled.csv')
+    df = pd.read_csv('../data/labeled_data.csv')
+    print(f"✓ Loaded {len(df)} samples")
     
-    # Separate features (X) from labels (y)
-    X_train = train_df.drop('Label', axis=1).values
-    y_train = train_df['Label'].values
-    X_test = test_df.drop('Label', axis=1).values
-    y_test = test_df['Label'].values
+    # ---- STEP 2: Prepare features and labels ----
+    print("\n[2/7] Preparing features and labels...")
     
-    print(f"✓ Training data: {X_train.shape} samples, {X_train.shape} features")
-    print(f"✓ Testing data: {X_test.shape} samples")
+    feature_columns = ['close', 'SMA_5', 'SMA_20', 'Momentum_5', 
+                      'Momentum_10', 'Volatility_20', 'Volume_Ratio']
     
-    # ---- STEP 2: Build neural network architecture ----
-    print("\n[2/8] Building neural network...")
+    X = df[feature_columns].values
+    y = df['Label'].values
     
-    # Sequential model = layers stacked one on top of another
-    model = keras.Sequential([
-        # Layer 1: Input layer
-        # 32 neurons (units)
-        # relu = activation function (adds non-linearity)
-        # input_shape=(7,) = expects 7 features as input
-        keras.Input(shape=(X_train.shape[1],)),
+    print(f"✓ Features shape: {X.shape}")
+    print(f"✓ Labels: 0={np.sum(y==0)}, 1={np.sum(y==1)}")
+    
+    # Check for class balance
+    if np.sum(y==0) == 0 or np.sum(y==1) == 0:
+        print("⚠️  WARNING: Class imbalance detected!")
+        print("   This will affect model training")
+    
+    # ---- STEP 3: Scale features ----
+    print("\n[3/7] Scaling features...")
+    
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    
+    # Save scaler for predictions
+    pickle.dump(scaler, open('../models/scaler.pkl', 'wb'))
+    print("✓ Features scaled and scaler saved")
+    
+    # ---- STEP 4: Split data ----
+    print("\n[4/7] Splitting data (80% train, 20% test)...")
+    
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_scaled, y, test_size=0.2, random_state=42, stratify=y
+    )
+    
+    print(f"✓ Train set: {X_train.shape} samples")
+    print(f"✓ Test set: {X_test.shape} samples")
+    
+    # ---- STEP 5: Build Simple NN model ----
+    print("\n[5/7] Building Simple Neural Network...")
+    
+    model = tf.keras.Sequential([
+        layers.Dense(64, activation='relu', input_dim=7),
+        layers.Dropout(0.3),
         layers.Dense(32, activation='relu'),
-
-        
-        # Dropout layer: randomly deactivates 30% of neurons
-        # Purpose: prevent overfitting
         layers.Dropout(0.3),
-        
-        # Layer 2: 16 neurons
-        # Each neuron takes input from previous layer (32 neurons)
         layers.Dense(16, activation='relu'),
-        
-        # Another dropout layer
-        layers.Dropout(0.3),
-        
-        # Layer 3: 8 neurons
-        layers.Dense(8, activation='relu'),
-        
-        # Output layer: 1 neuron with sigmoid
-        # sigmoid = converts output to probability (0-1)
-        # 1 neuron because we have binary classification (0 or 1)
         layers.Dense(1, activation='sigmoid')
     ])
     
-    print("✓ Model architecture created")
-    
-    # ---- STEP 3: Compile model ----
-    print("\n[3/8] Compiling model...")
-    
-    # Optimizer: adam = optimization algorithm to update weights
-    # Loss: binary_crossentropy = for binary classification
-    # Metrics: accuracy = what to track during training
-    
     model.compile(
-        optimizer='adam',                    # Optimization algorithm
-        loss='binary_crossentropy',          # Loss function for binary classification
-        metrics=['accuracy', 'precision', 'recall']  # Track these during training
+        optimizer='adam',
+        loss='binary_crossentropy',
+        metrics=['accuracy']
     )
     
-    print("✓ Model compiled")
+    print("✓ Model architecture:")
+    print(model.summary())
     
-    # ---- STEP 4: Print model summary ----
-    print("\n[4/8] Model Summary:")
-    print("-" * 70)
-    model.summary()
-    
-    # ---- STEP 5: Train the model ----
-    print("\n[5/8] Training neural network...")
-    print("(This may take 1-3 minutes)")
-    print("-" * 70)
-    
-    # Train the model
-    # epochs = number of times to go through entire dataset
-    # batch_size = how many samples to process before updating weights
-    # validation_split = use 20% of training data for validation
-    # verbose = 1 shows progress bar
+    # ---- STEP 6: Train model ----
+    print("\n[6/7] Training model...")
+    print("   (This may take 1-2 minutes)")
     
     history = model.fit(
         X_train, y_train,
-        epochs=50,                    # Train for 50 iterations
-        batch_size=8,                 # Process 8 samples at a time
-        validation_split=0.2,         # 20% for validation, 80% for training
-        verbose=1,                    # Show progress
-        shuffle=True                  # Randomize order each epoch
+        epochs=50,
+        batch_size=16,
+        validation_split=0.2,
+        verbose=0
     )
     
-    print("\n✓ Training complete")
-    
-    # ---- STEP 6: Make predictions ----
-    print("\n[6/8] Making predictions...")
-    
-    # Get probability predictions (values between 0 and 1)
-    y_pred_proba = model.predict(X_test, verbose=0)
-    
-    # Convert probabilities to binary predictions (0 or 1)
-    # If probability > 0.5, predict 1, else predict 0
-    y_pred = (y_pred_proba > 0.5).astype(int).flatten()
-    
-    print("✓ Predictions complete")
+    print("✓ Training complete")
     
     # ---- STEP 7: Evaluate model ----
-    print("\n[7/8] Evaluating model...")
+    print("\n[7/7] Evaluating model...")
+    
+    loss, accuracy = model.evaluate(X_test, y_test, verbose=0)
+    
+    print(f"✓ Test Loss: {loss:.4f}")
+    print(f"✓ Test Accuracy: {accuracy*100:.2f}%")
+    
+    # Get predictions
+    y_pred_prob = model.predict(X_test, verbose=0)
+    y_pred = (y_pred_prob > 0.5).astype(int).flatten()
     
     # Calculate metrics
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred, zero_division=0)
-    recall = recall_score(y_test, y_pred, zero_division=0)
-    f1 = f1_score(y_test, y_pred, zero_division=0)
-    roc_auc = roc_auc_score(y_test, y_pred_proba)
+    TP = np.sum((y_pred == 1) & (y_test == 1))
+    FP = np.sum((y_pred == 1) & (y_test == 0))
+    TN = np.sum((y_pred == 0) & (y_test == 0))
+    FN = np.sum((y_pred == 0) & (y_test == 1))
     
-    # Confusion matrix
-    tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
+    precision = TP / (TP + FP) if (TP + FP) > 0 else 0
+    recall = TP / (TP + FN) if (TP + FN) > 0 else 0
+    f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
     
+    print(f"✓ Precision: {precision*100:.2f}%")
+    print(f"✓ Recall: {recall*100:.2f}%")
+    print(f"✓ F1 Score: {f1:.4f}")
+    
+    # ---- Save model ----
     print("\n" + "="*70)
-    print("NEURAL NETWORK PERFORMANCE")
+    print("SAVING MODEL")
     print("="*70)
     
-    print(f"\nAccuracy:  {accuracy:.4f} ({accuracy*100:.2f}%)")
-    print(f"Precision: {precision:.4f} ({precision*100:.2f}%)")
-    print(f"Recall:    {recall:.4f} ({recall*100:.2f}%)")
-    print(f"F1-Score:  {f1:.4f}")
-    print(f"ROC-AUC:   {roc_auc:.4f}")
-    
-    print(f"\nConfusion Matrix:")
-    print(f"  True Negatives:  {int(tn)}")
-    print(f"  False Positives: {int(fp)}")
-    print(f"  False Negatives: {int(fn)}")
-    print(f"  True Positives:  {int(tp)}")
-    
-    # ---- STEP 8: Save model ----
-    print("\n[8/8] Saving model...")
-    
-    model.save('../models/simple_nn_model.keras')
+    model.save('../models/simple_nn_model.h5')
     print("✓ Model saved to: ../models/simple_nn_model.h5")
     
-    # ---- STEP 9: Plot training history ----
-    print("\nPlotting training history...")
+    # ---- Plot training history ----
+    plt.figure(figsize=(12, 4))
     
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-
-    # Plot accuracy over epochs
-    axes[0].plot(history.history['accuracy'], label='Training Accuracy')
-    axes[0].plot(history.history['val_accuracy'], label='Validation Accuracy')
-    axes[0].set_xlabel('Epoch')
-    axes[0].set_ylabel('Accuracy')
-    axes[0].set_title('Model Accuracy Over Time')
-    axes[0].legend()
-    axes[0].grid(True, alpha=0.3)
-
-    # Plot loss over epochs
-    axes[1].plot(history.history['loss'], label='Training Loss')
-    axes[1].plot(history.history['val_loss'], label='Validation Loss')
-    axes[1].set_xlabel('Epoch')
-    axes[1].set_ylabel('Loss')
-    axes[1].set_title('Model Loss Over Time')
-    axes[1].legend()
-    axes[1].grid(True, alpha=0.3)
+    plt.subplot(1, 2, 1)
+    plt.plot(history.history['loss'], label='Train Loss')
+    plt.plot(history.history['val_loss'], label='Val Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Simple NN: Training Loss')
+    plt.legend()
+    
+    plt.subplot(1, 2, 2)
+    plt.plot(history.history['accuracy'], label='Train Accuracy')
+    plt.plot(history.history['val_accuracy'], label='Val Accuracy')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.title('Simple NN: Training Accuracy')
+    plt.legend()
     
     plt.tight_layout()
-    plt.savefig('../reports/nn_training_history.png', dpi=100)
-    print("✓ Training history saved to: ../reports/nn_training_history.png")
-    # plt.show()
+    plt.savefig('../reports/simple_nn_training_history.png', dpi=150)
+    print("✓ Training plot saved")
     
     print("\n" + "="*70)
-    print("✅ NEURAL NETWORK TRAINING COMPLETE")
+    print("✅ SIMPLE NN TRAINING COMPLETE")
     print("="*70)
-    
+    print(f"\nModel Performance:")
+    print(f"  Accuracy: {accuracy*100:.2f}%")
+    print(f"  Precision: {precision*100:.2f}%")
+    print(f"  Recall: {recall*100:.2f}%")
+    print(f"  F1 Score: {f1:.4f}")
+
 except Exception as e:
     print(f"\n✗ ERROR: {str(e)}")
     import traceback
